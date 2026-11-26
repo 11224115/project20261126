@@ -6,7 +6,7 @@ const revealObserver = new IntersectionObserver((entries) => {
       revealObserver.unobserve(entry.target);
     }
   });
-}, { threshold: 0.15 });
+}, { threshold: 0.05, rootMargin: "0px 0px -40px 0px" });
 
 document.querySelectorAll(".reveal").forEach((el) => revealObserver.observe(el));
 
@@ -16,7 +16,13 @@ const sectionObserver = new IntersectionObserver((entries) => {
   entries.forEach((entry) => {
     if (entry.isIntersecting) {
       navLinks.forEach((link) => {
-        link.classList.toggle("active", link.getAttribute("href") === "#" + entry.target.id);
+        const isCurrent = link.getAttribute("href") === "#" + entry.target.id;
+        link.classList.toggle("active", isCurrent);
+        if (isCurrent) {
+          link.setAttribute("aria-current", "location");
+        } else {
+          link.removeAttribute("aria-current");
+        }
       });
     }
   });
@@ -73,17 +79,19 @@ function render() {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "chip file";
-    chip.innerHTML = `📄 ${name} <small>已修改・點我 add</small>`;
-    chip.addEventListener("click", () => stageFiles([name]));
+    chip.innerHTML = `<span aria-hidden="true">📄</span> ${name} <small>已修改・點我 add</small>`;
+    chip.addEventListener("click", () => stageFiles([name], `git add ${name}`));
     zoneWork.appendChild(chip);
   });
 
-  // 暫存區
+  // 暫存區：可點擊取消暫存
   zoneStage.innerHTML = "";
   namesWith("staged").forEach((name) => {
-    const chip = document.createElement("div");
+    const chip = document.createElement("button");
+    chip.type = "button";
     chip.className = "chip file";
-    chip.textContent = `📄 ${name}`;
+    chip.innerHTML = `<span aria-hidden="true">📄</span> ${name} <small>已暫存・點我取消</small>`;
+    chip.addEventListener("click", () => unstageFile(name));
     zoneStage.appendChild(chip);
   });
 
@@ -114,10 +122,17 @@ function render() {
   }
 }
 
-function stageFiles(names) {
+function stageFiles(names, command = "git add .") {
   names.forEach((n) => (files[n] = "staged"));
   highlight("stage");
-  writeLog(names.length === FILE_NAMES.length || names.length > 1 ? "git add ." : `git add ${names[0]}`);
+  writeLog(command);
+  render();
+}
+
+function unstageFile(name) {
+  files[name] = "modified";
+  highlight("work");
+  writeLog(`git restore --staged ${name}`);
   render();
 }
 
@@ -130,7 +145,7 @@ btnEdit.addEventListener("click", () => {
   render();
 });
 
-btnAdd.addEventListener("click", () => stageFiles(namesWith("modified")));
+btnAdd.addEventListener("click", () => stageFiles(namesWith("modified"), "git add ."));
 
 btnCommit.addEventListener("click", () => {
   const staged = namesWith("staged");
@@ -163,21 +178,38 @@ function resetDemo() {
 btnReset.addEventListener("click", resetDemo);
 resetDemo();
 
-// ===== 指令表：點擊複製 =====
+// ===== 指令表與程式碼區塊：點擊複製 =====
 const toast = document.getElementById("toast");
 let toastTimer;
 
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    const hasPlaceholder = /[\u4e00-\u9fff]/.test(text);
+    toast.textContent = hasPlaceholder
+      ? `已複製：${text}（記得替換中文）`
+      : `已複製：${text}`;
+  } catch {
+    toast.textContent = "瀏覽器不允許複製，請手動選取";
+  }
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 2000);
+}
+
 document.querySelectorAll(".copy").forEach((code) => {
   code.title = "點一下複製";
-  code.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(code.textContent);
-      toast.textContent = `已複製：${code.textContent}`;
-    } catch {
-      toast.textContent = "瀏覽器不允許複製，請手動選取";
-    }
-    toast.classList.add("show");
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
-  });
+  code.addEventListener("click", () => copyText(code.textContent));
+});
+
+document.querySelectorAll("pre > code").forEach((code) => {
+  const pre = code.parentElement;
+  pre.classList.add("pre-wrap");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "copy-pre";
+  btn.textContent = "複製";
+  btn.ariaLabel = "複製程式碼";
+  btn.addEventListener("click", () => copyText(code.textContent.trim()));
+  pre.appendChild(btn);
 });
