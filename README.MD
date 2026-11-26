@@ -22,10 +22,12 @@ git-site/
 
 1. 什麼是 Git
 2. 三個區域：工作目錄、暫存區、儲存庫
-3. 互動示範：按按鈕體驗 add 和 commit
+3. 互動示範：修改三個檔案，自己選要 add 哪幾個再 commit
 4. 分支
 5. 遠端協作：push、pull、clone
-6. 常用指令表（點擊可複製）
+6. 回溯：restore、revert、reset 的差別，以及 HEAD detached
+7. 常見錯誤：Vim、E325、embedded repository、push 失敗、.gitignore 等
+8. 常用指令表（點擊可複製）
 
 ## 修改顏色
 
